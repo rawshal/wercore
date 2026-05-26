@@ -1,3 +1,5 @@
-libreoffice
-zlib1g-dev
-libjpeg-dev
+streamlit
+Pillow
+python-dateutil
+docxtpl
+pypdf
