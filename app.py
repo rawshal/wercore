@@ -127,11 +127,20 @@ def convert_docx_to_pdf_cloud(docx_path: str, output_dir: str):
     """Uses LibreOffice to convert Word to PDF on Linux/Cloud environments."""
     try:
         subprocess.run([
-            "libreoffice", "--headless", "--convert-to", "pdf", 
-            docx_path, "--outdir", output_dir
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            "libreoffice", 
+            "-env:UserInstallation=file:///tmp/libreoffice_profile", # THE CLOUD FIX
+            "--headless", 
+            "--nologo",
+            "--nofirststartwizard",
+            "--convert-to", "pdf", 
+            docx_path, 
+            "--outdir", output_dir
+        ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode('utf-8', errors='ignore')
+        raise RuntimeError(f"LibreOffice crashed: {error_msg}")
     except Exception as e:
-        raise RuntimeError(f"PDF Conversion failed. Ensure LibreOffice is installed via packages.txt. Error: {e}")
+        raise RuntimeError(f"PDF Conversion failed. Error: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SIDEBAR
