@@ -9,19 +9,15 @@ from pypdf import PdfWriter, PdfReader
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="Wercore Compliance Engine", page_icon="💧", layout="wide")
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR        = os.path.dirname(__file__)
-ASSETS_DIR      = os.path.join(BASE_DIR, "assets")
+# ── Paths (Flat Structure for Streamlit Cloud) ────────────────────────────────
+# These paths expect all files to be in the exact same main folder as app.py
+TPL_COVER       = "Cover_Template.docx"
+TPL_INSPECTION  = "Inspection_Template.docx"
+TPL_WARRANTY    = "Warranty_Template.docx"
+TPL_JOB         = "Job_Completion_Template.docx"
 
-# Dynamic Templates
-TPL_COVER       = os.path.join(BASE_DIR, "Cover_Template.docx")
-TPL_INSPECTION  = os.path.join(BASE_DIR, "Inspection_Template.docx")
-TPL_WARRANTY    = os.path.join(BASE_DIR, "Warranty_Template.docx")
-TPL_JOB         = os.path.join(BASE_DIR, "Job_Completion_Template.docx")
-
-# Static Assets
-STATIC_DM_CERT  = os.path.join(ASSETS_DIR, "DM_Certificate.pdf")
-STATIC_MSDS     = os.path.join(ASSETS_DIR, "MSDS.pdf")
+STATIC_DM_CERT  = "DM_Certificate.pdf"
+STATIC_MSDS     = "MSDS.pdf"
 
 # ── Session state bootstrap ───────────────────────────────────────────────────
 if "tank_count" not in st.session_state:
@@ -122,7 +118,7 @@ def site_report_to_pdf_bytes(image_bytes: bytes, client_name: str, date_str: str
 # ── Cloud-Safe Word to PDF Engine ─────────────────────────────────────────────
 def fill_word_template(tpl_path: str, context: dict, output_path: str):
     if not os.path.exists(tpl_path):
-        raise FileNotFoundError(f"Template not found: {os.path.basename(tpl_path)}")
+        raise FileNotFoundError(f"Template not found: {tpl_path}. Ensure it is uploaded to the main GitHub folder.")
     tpl = DocxTemplate(tpl_path)
     tpl.render(context)
     tpl.save(output_path)
@@ -135,7 +131,7 @@ def convert_docx_to_pdf_cloud(docx_path: str, output_dir: str):
             docx_path, "--outdir", output_dir
         ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except Exception as e:
-        raise RuntimeError(f"PDF Conversion failed. Ensure LibreOffice is installed. Error: {e}")
+        raise RuntimeError(f"PDF Conversion failed. Ensure LibreOffice is installed via packages.txt. Error: {e}")
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  SIDEBAR
@@ -271,11 +267,36 @@ if generate_btn:
                 STATIC_DM_CERT,
                 STATIC_MSDS
             ]
+            
             for fpath in sequence:
-                if os.path.exists(fpath): writer.append(fpath)
+                if os.path.exists(fpath): 
+                    writer.append(fpath)
+                else:
+                    st.warning(f"⚠️ Could not find {fpath} to merge. Skipping.")
             
             for pdf_bytes in grid_pdfs: writer.append(PdfReader(io.BytesIO(pdf_bytes))) # Photo Grid
             for pdf_bytes in hw_pdfs: writer.append(PdfReader(io.BytesIO(pdf_bytes)))   # Handwritten Reports
             
             writer.append(os.path.join(tmp_dir, "warranty.pdf")) # Warranty
-            writer.append(os.path.join(tmp_dir, "job.pdf
+            writer.append(os.path.join(tmp_dir, "job.pdf"))      # Job Completion
+
+            # 4. Output
+            final_pdf_path = os.path.join(tmp_dir, "Final_Report.pdf")
+            with open(final_pdf_path, "wb") as f: writer.write(f)
+            with open(final_pdf_path, "rb") as f: pdf_bytes_final = f.read()
+
+            progress_bar.progress(100, text="✅ Report Complete!")
+            st.success("✅ Master Compliance Report generated successfully!")
+            
+            st.download_button(
+                label="⬇️ Download Complete PDF Dossier",
+                data=pdf_bytes_final,
+                file_name=f"Wercore_Report_{client_name.replace(' ', '_')}_{date_str}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True
+            )
+
+        except Exception as e:
+            progress_bar.empty()
+            st.error(f"❌ Error generating report: {e}")
