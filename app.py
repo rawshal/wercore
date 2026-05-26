@@ -1,6 +1,6 @@
 import streamlit as st
 from PIL import Image, ImageDraw, ImageFont, ImageOps
-from datetime import date
+from dateutil.relativedelta import relativedelta
 from dateutil.relativedelta import relativedelta
 import io, math, os, tempfile, subprocess
 from docxtpl import DocxTemplate
