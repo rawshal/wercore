@@ -1,0 +1,5 @@
+streamlit==1.42.0
+Pillow==11.0.0
+python-dateutil==2.9.0
+docxtpl==0.20.2
+pypdf==5.1.0
